@@ -49,6 +49,10 @@ end
 local function open_url(url)
   if vim.ui and vim.ui.open then
     vim.ui.open(url)
+  elseif vim.fn.has('mac') == 1 then
+    vim.fn.system({ 'open', url })
+  elseif vim.fn.has('win32') == 1 or vim.fn.has('win64') == 1 then
+    vim.fn.system({ 'cmd', '/c', 'start', '', url })
   else
     vim.fn.system({ 'xdg-open', url })
   end
@@ -92,7 +96,9 @@ local function resolve_package_from_lsp()
   if not result then
     return nil
   end
-  local uri = result.uri or (type(result) == 'table' and result.targetUri) or nil
+  local locations = type(result) == 'table' and result[1] and result or { result }
+  local loc = locations[1]
+  local uri = loc and (loc.uri or loc.targetUri)
   if not uri then
     return nil
   end
