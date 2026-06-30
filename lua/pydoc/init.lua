@@ -48,6 +48,19 @@ local function get_word_under_cursor()
 	return word
 end
 
+local function get_import_package()
+	local line = vim.fn.getline(".")
+	local from_pkg = line:match("^%s*from%s+([%w_][%w_%.]*)%s+import")
+	if from_pkg then
+		return from_pkg:match("^([%w_]+)")
+	end
+	local import_pkg = line:match("^%s*import%s+([%w_]+)")
+	if import_pkg then
+		return import_pkg
+	end
+	return nil
+end
+
 local function open_url(url)
 	if vim.ui and vim.ui.open then
 		vim.ui.open(url)
@@ -85,11 +98,12 @@ local function resolve_package_from_lsp()
 	if #clients == 0 then
 		return nil
 	end
-	local params = vim.lsp.util.make_position_params()
-	local ok, results = pcall(vim.lsp.buf_request_sync, 0, "textDocument/definition", params, 1000)
-	if not ok or not results or #results == 0 then
-		return nil
-	end
+  local encoding = clients[1].offset_encoding or "utf-16"
+  local params = vim.lsp.util.make_position_params(0, encoding)
+  local ok, results = pcall(vim.lsp.buf_request_sync, 0, "textDocument/definition", params, 1000)
+  if not ok or not results or next(results) == nil then
+    return nil
+  end
 	local result
 	for _, response in pairs(results) do
 		result = response.result
@@ -110,8 +124,8 @@ local function resolve_package_from_lsp()
 end
 
 function M.open_docs(pkg)
-	if not pkg then
-		pkg = resolve_package_from_lsp() or get_word_under_cursor()
+  if not pkg then
+		pkg = resolve_package_from_lsp() or get_import_package() or get_word_under_cursor()
 	end
 	if not pkg then
 		vim.notify("[pydoc] No package name found under cursor", vim.log.levels.WARN)
