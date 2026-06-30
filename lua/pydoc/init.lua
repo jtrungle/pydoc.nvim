@@ -84,7 +84,11 @@ local function resolve_package_from_lsp()
   if not ok or not results or #results == 0 then
     return nil
   end
-  local result = results[1].result
+  local result
+  for _, response in pairs(results) do
+    result = response.result
+    if result then break end
+  end
   if not result then
     return nil
   end
